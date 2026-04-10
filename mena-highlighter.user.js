@@ -16,7 +16,7 @@
 
     (function () {
 
-  const SKIP_SUBSTRINGS         = ['refferal', 'ticket id', 'processing date'];
+  const SKIP_SUBSTRINGS         = ['refferal', 'ticket id', 'external status', 'processing date'];
   const FULL_ONLY_SUBSTRINGS    = ['transaction id', 'file', 'amount'];
   const PART_ALLOWED_SUBSTRINGS = ['unique transfer number', 'inside comment'];
   const NO_COPY_SUBSTRINGS      = ['actions', 'ticket history'];
