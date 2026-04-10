@@ -58,6 +58,7 @@
     root.querySelectorAll('td span').forEach(span => { span.style.cssText = ''; });
     root.querySelectorAll('mark.b-mark').forEach(m => m.replaceWith(document.createTextNode(m.textContent)));
     root.querySelectorAll('tbody tr td').forEach(td => { td.style.background = ''; });
+    root.querySelectorAll('td a').forEach(a => { a.style.cssText = ''; });
   }
 
   // ── Проверка фильтров ──────────────────────────────────────────────────
