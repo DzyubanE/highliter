@@ -426,6 +426,7 @@
       'credited (fraud) (m)', 'approved by agent (m)',
       'credited to another account by agent (m)',
       'adjusted the amount (deposit) (m)',
+      'closed', 'credited',
     ]);
 
     const statusIdx = headers.findIndex(h => h.innerText.trim().toLowerCase() === 'external status');
