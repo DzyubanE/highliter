@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MENA Table Highlighter
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.2
 // @description  Подсветка дублей, бейджи, кнопки копирования
 // @author       you
 // @match        https://th-managment.com/en/admin/backoffice/paymentsupport
