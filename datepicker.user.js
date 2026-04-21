@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Auto Datepicker for filters Team B BETA
-// @version      1.0.2
+// @version      1.0.3
 // @updateURL    https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/datepicker.user.js
 // @downloadURL  https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/datepicker.user.js
 // @author       You
@@ -14,9 +14,43 @@
 (function () {
   'use strict';
 
+  function pad(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function fmt(d) {
+    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function isMyTicketsSwitchOn() {
+    const label = document.querySelector('.input-group.select-box .apm-form__switch');
+    return label ? label.classList.contains('active') : false;
+  }
+
   function getDateRange() {
     const now = new Date();
 
+    if (isMyTicketsSwitchOn()) {
+      const hour = now.getHours();
+
+      const end = new Date(now);
+      end.setHours(23, 59, 0, 0);
+
+      if (hour >= 9) {
+        // 09:00–23:59 → только сегодня
+        const start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        return `${fmt(start)} ~ ${fmt(end)}`;
+      } else {
+        // 00:00–08:59 → вчера + сегодня
+        const start = new Date(now);
+        start.setDate(start.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+        return `${fmt(start)} ~ ${fmt(end)}`;
+      }
+    }
+
+    // Стандартный режим: год назад + 1 день ~ сегодня 23:59
     const end = new Date(now);
     end.setHours(23, 59, 0, 0);
 
@@ -25,15 +59,10 @@
     start.setDate(start.getDate() + 1);
     start.setHours(0, 0, 0, 0);
 
-    const pad = (n) => String(n).padStart(2, '0');
-    const fmt = (d) =>
-      `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
     return `${fmt(start)} ~ ${fmt(end)}`;
   }
 
   function setDatepickerValue(input, value) {
-    // Устанавливаем значение через нативный setter (для Vue-реактивности)
     const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
     nativeSetter.call(input, value);
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -47,15 +76,12 @@
     return true;
   }
 
-  // Следим за кликом на Apply внутри модалки
   document.addEventListener('click', (e) => {
     const applyBtn = e.target.closest('[data-v-3b29a2a9] .btn-success');
     if (!applyBtn) return;
 
-    // Небольшая задержка — дать Vue время отрендерить пикер после применения фильтра
     setTimeout(() => {
       if (!trySetDate()) {
-        // Если пикер ещё не появился — ждём ещё
         const interval = setInterval(() => {
           if (trySetDate()) clearInterval(interval);
         }, 100);
