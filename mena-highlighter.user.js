@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Duplicate Highlighre Team B
+// @name         Duplicate Highligher Team B
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  Подсветка дублей, бейджи, кнопки копирования
