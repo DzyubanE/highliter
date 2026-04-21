@@ -1,7 +1,9 @@
 // ==UserScript==
 // @name         Edit Helper Team B
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.0.1
+// @updateURL    https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/apply-confirm.user.js
+// @downloadURL  https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/apply-confirm.user.js
 // @description  Двойное подтверждение + шаблоны комментариев
 // @author       You
 // @match        https://th-managment.com/en/admin/backoffice/paymentsupport
