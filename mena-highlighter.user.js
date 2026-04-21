@@ -1,7 +1,9 @@
 // ==UserScript==
 // @name         Duplicate Highligher Team B
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.0.1
+// @updateURL    https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
+// @downloadURL  https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
 // @description  Подсветка дублей, бейджи, кнопки копирования
 // @author       you
 // @match        https://th-managment.com/en/admin/backoffice/paymentsupport
