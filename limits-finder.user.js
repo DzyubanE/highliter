@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Limit's Finder Team B BETA
 // @namespace    team-bestie
-// @version      1.0.1
+// @version      1.0.2
 // @updateURL    https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/limits-finder.user.js
 // @downloadURL  https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/limits-finder.user.js
 // @author       You
