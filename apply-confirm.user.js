@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Edit Helper Team B BETA
 // @namespace    http://tampermonkey.net/
-// @version      1.0.4
+// @version      1.0.5
 // @updateURL    https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/apply-confirm.user.js
 // @downloadURL  https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/apply-confirm.user.js
 // @description  Двойное подтверждение + шаблоны комментариев
@@ -9,7 +9,7 @@
 // @match        https://th-managment.com/en/admin/backoffice/paymentsupport
 // @match        https://my-managment.com/en/admin/backoffice/paymentsupport
 // @match        https://managment.io//en/admin/backoffice/paymentsupport
-// @icon         https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/apply-confirm.svg
+// @icon         https://raw.githubusercontent.com/DzyubanE/MENA-L2/refs/heads/main/apply-confirm.png
 // @grant        none
 // ==/UserScript==
 
