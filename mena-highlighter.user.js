@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Duplicate Highligher Team B BETA
 // @namespace    http://tampermonkey.net/
-// @version      1.0.5
+// @version      1.0.7
 // @updateURL    https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
 // @downloadURL  https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
 // @description  Подсветка дублей, бейджи, кнопки копирования
@@ -41,55 +41,19 @@
       .b-copy-btn svg { pointer-events: none; }
       .b-copy-btn.copied { border-color: #3B6D11; background: #EAF3DE; }
       .b-copy-btn.copied svg path { stroke: #3B6D11; }
-
-      /* Тумблер */
       .b-toggle-bar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 14px;
-        margin-bottom: 8px;
-        background: #F7F8FA;
-        border: .5px solid #DFE1E6;
-        border-radius: 8px;
-        font-size: 12px;
-        font-weight: 500;
-        color: #42526E;
-        user-select: none;
-        width: fit-content;
+        display: flex; align-items: center; gap: 10px;
+        padding: 8px 14px; margin-bottom: 8px;
+        background: #F7F8FA; border: .5px solid #DFE1E6;
+        border-radius: 8px; font-size: 12px; font-weight: 500;
+        color: #42526E; user-select: none; width: fit-content;
       }
-      .b-toggle {
-        position: relative;
-        width: 32px; height: 18px;
-        cursor: pointer;
-        flex-shrink: 0;
-      }
+      .b-toggle { position: relative; width: 32px; height: 18px; cursor: pointer; flex-shrink: 0; }
       .b-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
-      .b-toggle-track {
-        position: absolute; inset: 0;
-        background: #DFE1E6;
-        border-radius: 20px;
-        transition: background .2s;
-      }
+      .b-toggle-track { position: absolute; inset: 0; background: #DFE1E6; border-radius: 20px; transition: background .2s; }
       .b-toggle input:checked + .b-toggle-track { background: #32c2d2; }
-      .b-toggle-thumb {
-        position: absolute;
-        top: 2px; left: 2px;
-        width: 14px; height: 14px;
-        background: #fff;
-        border-radius: 50%;
-        transition: transform .2s;
-        pointer-events: none;
-      }
+      .b-toggle-thumb { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform .2s; pointer-events: none; }
       .b-toggle input:checked ~ .b-toggle-thumb { transform: translateX(14px); }
-
-      /* Suspected duplicate бейдж — перенос */
-      .b-badge.b-suspdup {
-        white-space: normal !important;
-        max-width: 260px;
-        line-height: 1.4;
-        word-break: break-word;
-      }
     `;
     document.head.appendChild(style);
   }
@@ -97,7 +61,6 @@
   const copyIconSm  = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
   const checkIconSm = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
 
-  // Глобальное состояние тумблера
   let highlightEnabled = true;
 
   // ── Тумблер ────────────────────────────────────────────────────────────
@@ -113,7 +76,6 @@
 
     const label = document.createElement('label');
     label.className = 'b-toggle';
-    label.title = 'Включить / выключить подсветку';
 
     const input = document.createElement('input');
     input.type = 'checkbox';
@@ -140,7 +102,6 @@
         run();
       } else {
         resetTable(document.querySelector('.table-wrapper'));
-        // Wallet оставляем — только сбрасываем подсветку
         restoreWallet();
       }
     });
@@ -166,29 +127,26 @@
     root.querySelectorAll('tbody tr td').forEach(td => { td.style.background = ''; });
   }
 
-  // После сброса восстанавливаем только wallet
   function restoreWallet() {
     const root = document.querySelector('.table-wrapper');
     if (!root) return;
-    const headers = Array.from(root.querySelectorAll('thead th'));
-    const rows    = Array.from(root.querySelectorAll('tbody tr'));
+    const headers   = Array.from(root.querySelectorAll('thead th'));
+    const rows      = Array.from(root.querySelectorAll('tbody tr'));
     const walletIdx = headers.findIndex(h => h.innerText.trim().toLowerCase() === "user's wallet");
     if (walletIdx === -1) return;
-
-    const spanText = new Map();
+    const spanText  = new Map();
     rows.forEach(row => {
       row.querySelectorAll('td').forEach(td => {
         const span = td?.querySelector('span');
         if (span) spanText.set(span, span.innerText);
       });
     });
-
     rows.forEach(row => {
       const td   = row.querySelectorAll('td')[walletIdx];
       const span = td?.querySelector('span');
       if (!span) return;
       const plain = spanText.get(span) || span.innerText;
-      const len = plain.trim().length;
+      const len   = plain.trim().length;
       if (len > 0) addBadge(td, 'wallet', `${len} символов`, plain);
     });
   }
@@ -223,7 +181,7 @@
 
   // ── Бейдж ────────────────────────────────────────────────────────────
 
-  function makeBadge(type, label) {
+  function makeBadge(type, label, extra) {
     const C = {
       full:    { dot:'#378ADD', bg:'#E6F1FB', color:'#185FA5', border:'#B5D4F4' },
       part:    { dot:'#EF9F27', bg:'#FAEEDA', color:'#854F0B', border:'#FAC775' },
@@ -231,6 +189,72 @@
       wallet:  { dot:'#888780', bg:'#F1EFE8', color:'#5F5E5A', border:'#D3D1C7' },
       suspdup: { dot:'rgba(255,255,255,.8)', bg:'#7C3AED', color:'#fff', border:'#5B21B6' },
     }[type];
+
+    // ── Suspected Duplicate — особая структура ──────────────────────────
+    if (type === 'suspdup' && extra) {
+      const b = document.createElement('div');
+      b.className = 'b-badge b-suspdup';
+      b.style.cssText = `display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:10px;font-weight:500;padding:6px 8px;border-radius:10px;background:${C.bg};color:${C.color};border:.5px solid ${C.border};width:100%;box-sizing:border-box;line-height:1.4;`;
+
+      // Заголовок
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;gap:5px;';
+      const dot = document.createElement('span');
+      dot.style.cssText = `display:inline-block;width:6px;height:6px;border-radius:50%;background:${C.dot};flex-shrink:0;`;
+      const title = document.createElement('span');
+      title.textContent = `Suspected Duplicate ×${extra.count}`;
+      header.appendChild(dot);
+      header.appendChild(title);
+      b.appendChild(header);
+
+      // Функция создания chip-тикета
+      function makeChip(ticket) {
+        const chip = document.createElement('button');
+        chip.style.cssText = `display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:20px;border:.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.2);color:#fff;font-size:10px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .15s;`;
+        chip.title = 'Копировать Ticket ID';
+        chip.textContent = ticket;
+        chip.addEventListener('click', e => {
+          e.stopPropagation();
+          navigator.clipboard.writeText(ticket).then(() => {
+            chip.style.background = 'rgba(255,255,255,.45)';
+            setTimeout(() => { chip.style.background = 'rgba(255,255,255,.2)'; }, 1000);
+          });
+        });
+        return chip;
+      }
+
+      // Превью — первые 2 тикета
+      const previewWrap = document.createElement('div');
+      previewWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:3px;';
+      extra.preview.forEach(ticket => previewWrap.appendChild(makeChip(ticket)));
+
+      // +N more
+      if (extra.rest.length > 0) {
+        const restWrap = document.createElement('div');
+        restWrap.style.cssText = 'display:none;flex-wrap:wrap;gap:3px;margin-top:2px;';
+        extra.rest.forEach(ticket => restWrap.appendChild(makeChip(ticket)));
+
+        const moreBtn = document.createElement('button');
+        moreBtn.style.cssText = `display:inline-flex;align-items:center;padding:1px 6px;border-radius:20px;border:.5px solid rgba(255,255,255,.4);background:transparent;color:rgba(255,255,255,.85);font-size:10px;cursor:pointer;white-space:nowrap;`;
+        moreBtn.textContent = `+${extra.rest.length} more`;
+        moreBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          const expanded = restWrap.style.display === 'flex';
+          restWrap.style.display = expanded ? 'none' : 'flex';
+          moreBtn.textContent = expanded ? `+${extra.rest.length} more` : 'less';
+        });
+
+        previewWrap.appendChild(moreBtn);
+        b.appendChild(previewWrap);
+        b.appendChild(restWrap);
+      } else {
+        b.appendChild(previewWrap);
+      }
+
+      return b;
+    }
+
+    // ── Обычный бейдж ───────────────────────────────────────────────────
     const b = document.createElement('span');
     b.className = `b-badge b-${type}`;
     b.style.cssText = `display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;letter-spacing:.02em;background:${C.bg};color:${C.color};border:.5px solid ${C.border};flex-shrink:0;user-select:none;pointer-events:none;`;
@@ -241,33 +265,31 @@
     return b;
   }
 
-  function noCopyFn(td, NO_COPY) { return NO_COPY.some(s => (td.closest('table')?.querySelectorAll('thead th')[td.cellIndex]?.innerText.trim().toLowerCase() || '').includes(s)); }
-
   function ensureWrap(td, plainText, noCopy) {
     if (td.dataset.bWrapped) return;
     td.dataset.bWrapped = '1';
     const wrap = document.createElement('div');
     wrap.className = 'b-wrap';
-    wrap.style.cssText = `display:flex;flex-direction:column;gap:5px;align-items:flex-start;${noCopy ? '' : 'padding-right:22px;'}`;
+    wrap.style.cssText = `display:flex;flex-direction:column;gap:5px;align-items:flex-start;width:100%;box-sizing:border-box;${noCopy ? '' : 'padding-right:22px;'}`;
     const vRow = document.createElement('div');
     vRow.className = 'b-value';
     vRow.style.cssText = 'display:flex;align-items:center;';
     while (td.firstChild) vRow.appendChild(td.firstChild);
     const bRow = document.createElement('div');
     bRow.className = 'b-badges';
-    bRow.style.cssText = 'display:flex;align-items:center;gap:4px;flex-wrap:wrap;';
+    bRow.style.cssText = 'display:flex;align-items:flex-start;gap:4px;flex-wrap:wrap;width:100%;box-sizing:border-box;';
     wrap.appendChild(vRow);
     wrap.appendChild(bRow);
     if (!noCopy) wrap.appendChild(makeCopyBtn(plainText));
     td.appendChild(wrap);
   }
 
-  function addBadge(td, type, label, plainText) {
+  function addBadge(td, type, label, plainText, extra) {
     if (!td || td.querySelector(`.b-${type}`)) return;
-    const headers = Array.from(td.closest('table')?.querySelectorAll('thead th') || []);
-    const noCopy  = NO_COPY_SUBSTRINGS.some(s => (headers[td.cellIndex]?.innerText.trim().toLowerCase() || '').includes(s));
+    const hdrs   = Array.from(td.closest('table')?.querySelectorAll('thead th') || []);
+    const noCopy = NO_COPY_SUBSTRINGS.some(s => (hdrs[td.cellIndex]?.innerText.trim().toLowerCase() || '').includes(s));
     ensureWrap(td, plainText, noCopy);
-    td.querySelector('.b-badges').appendChild(makeBadge(type, label));
+    td.querySelector('.b-badges').appendChild(makeBadge(type, label, extra));
   }
 
   // ── run ────────────────────────────────────────────────────────────────
@@ -292,8 +314,8 @@
 
     function headerLabel(i)    { return headers[i]?.innerText.trim().toLowerCase() || ''; }
     function shouldSkip(td)    { return SKIP_SUBSTRINGS.some(s => headerLabel(td.cellIndex).includes(s)); }
-    function isPartAllowed(td) { return PART_ALLOWED_SUBSTRINGS.some(s => headerLabel(td.cellIndex).includes(s)); }
     function isFileCol(td)     { return headerLabel(td.cellIndex).includes(FILE_SUBSTRING); }
+    function isPartAllowed(td) { return PART_ALLOWED_SUBSTRINGS.some(s => headerLabel(td.cellIndex).includes(s)); }
     function noCopy(td)        { return NO_COPY_SUBSTRINGS.some(s => headerLabel(td.cellIndex).includes(s)); }
     function getSpan(td)       { return td?.querySelector('span'); }
     function normalize(t)      { return (t || '').replace(/\s+/g,' ').trim().toLowerCase(); }
@@ -398,14 +420,14 @@
         if (!isFileCol(td)) return;
         const span = getSpan(td);
         if (!span) return;
-        const plain = spanText.get(span) || '';
+        const plain   = spanText.get(span) || '';
         const anchors = Array.from(span.querySelectorAll('a'));
 
         if (anchors.length > 0) {
           let anyMatch = false;
           anchors.forEach(a => {
-            const t = normalize(a.innerText || a.textContent || '');
-            const h = normalize(a.getAttribute('href') || '');
+            const t   = normalize(a.innerText || a.textContent || '');
+            const h   = normalize(a.getAttribute('href') || '');
             const key = (fullMap.get(t) || 0) > 1 ? t : (fullMap.get(h) || 0) > 1 ? h : null;
             if (!key) return;
             anyMatch = true;
@@ -414,12 +436,12 @@
           });
           if (anyMatch) addBadge(td, 'full', 'Full', plain);
         } else {
-          const links = splitLinks(plain);
+          const links        = splitLinks(plain);
           const matchedLinks = links.filter(link => (fullMap.get(normalize(link)) || 0) > 1);
           if (!matchedLinks.length) return;
           let html = plain;
           matchedLinks.forEach(link => {
-            const c = getFullColor(normalize(link));
+            const c    = getFullColor(normalize(link));
             const pill = `<mark class="b-mark" style="background:${c.bg};color:${c.text};border:.5px solid ${c.border};border-radius:4px;padding:1px 5px;font-weight:500;pointer-events:none;display:inline;">${link}</mark>`;
             html = html.split(link).join(pill);
           });
@@ -533,22 +555,14 @@
         indices.forEach(i => {
           const { ticketTd, ticketVal } = rowData[i];
           if (!ticketTd) return;
-
           const otherTickets = indices
             .filter(j => j !== i)
             .map(j => rowData[j].ticketVal)
             .filter(Boolean);
-
-          // Если больше 3 — первые 3 + «и ещё N»
-          let ticketsLabel;
-          if (otherTickets.length > 3) {
-            ticketsLabel = otherTickets.slice(0, 3).join(', ') + ` +${otherTickets.length - 3} more`;
-          } else {
-            ticketsLabel = otherTickets.join(', ');
-          }
-
-          const plain = spanText.get(getSpan(ticketTd)) || getSpan(ticketTd)?.innerText || '';
-          addBadge(ticketTd, 'suspdup', `Suspected Duplicate ×${indices.length} | ${ticketsLabel}`, plain);
+          const preview = otherTickets.slice(0, 2);
+          const rest    = otherTickets.slice(2);
+          const plain   = spanText.get(getSpan(ticketTd)) || getSpan(ticketTd)?.innerText || '';
+          addBadge(ticketTd, 'suspdup', '', plain, { count: indices.length, preview, rest });
         });
       });
     }
@@ -582,7 +596,7 @@
         const span = td?.querySelector('span');
         if (!span) return;
         const plain = spanText.get(span) || span.innerText;
-        const len = plain.trim().length;
+        const len   = plain.trim().length;
         if (len > 0) addBadge(td, 'wallet', `${len} символов`, plain);
       });
     }
