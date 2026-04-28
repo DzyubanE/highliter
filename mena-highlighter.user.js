@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Duplicate Highligher Team B BETA
 // @namespace    http://tampermonkey.net/
-// @version      1.0.7
+// @version      1.0.8
 // @updateURL    https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
 // @downloadURL  https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
 // @description  Подсветка дублей, бейджи, кнопки копирования
@@ -62,6 +62,280 @@
   const checkIconSm = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
 
   let highlightEnabled = true;
+    
+// ── Превью файлов при наведении ───────────────────────────────────────
+
+  (function initFilePreview() {
+    if (document.getElementById('b-preview-style')) return;
+
+    const style = document.createElement('style');
+    style.id = 'b-preview-style';
+    style.textContent = `
+      #b-preview-popup {
+        position: fixed;
+        z-index: 99999;
+        background: #fff;
+        border: .5px solid #DFE1E6;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        overflow: hidden;
+        pointer-events: auto;
+        opacity: 0;
+        transition: opacity .15s;
+        max-width: 340px;
+        min-width: 180px;
+      }
+      #b-preview-popup.visible { opacity: 1; }
+      #b-preview-popup img {
+        display: block;
+        max-width: 340px;
+        max-height: 260px;
+        object-fit: contain;
+        background: #F7F8FA;
+      }
+      .b-preview-actions {
+        display: flex;
+        gap: 6px;
+        padding: 6px 8px;
+        background: #F7F8FA;
+        border-top: .5px solid #DFE1E6;
+      }
+      .b-preview-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 9px;
+        border-radius: 6px;
+        border: .5px solid #DFE1E6;
+        background: #fff;
+        font-size: 11px;
+        font-weight: 500;
+        color: #42526E;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background .12s, border-color .12s;
+        text-decoration: none;
+      }
+      .b-preview-btn:hover { background: #E6F1FB; border-color: #B5D4F4; color: #185FA5; }
+      .b-preview-btn svg { flex-shrink: 0; pointer-events: none; }
+      .b-preview-pdf-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+      }
+      .b-preview-pdf-name {
+        font-size: 12px;
+        color: #42526E;
+        font-weight: 500;
+        word-break: break-all;
+        max-width: 240px;
+      }
+      .b-preview-loading {
+        padding: 14px 18px;
+        font-size: 11px;
+        color: #8993A4;
+      }
+
+      /* Lightbox */
+      #b-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        background: rgba(0,0,0,0.85);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        cursor: zoom-out;
+      }
+      #b-lightbox.open { display: flex; }
+      #b-lightbox img {
+        max-width: 92vw;
+        max-height: 92vh;
+        object-fit: contain;
+        border-radius: 6px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+        cursor: default;
+      }
+      #b-lightbox-close {
+        position: absolute;
+        top: 18px; right: 22px;
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.15);
+        border: .5px solid rgba(255,255,255,0.3);
+        color: #fff;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background .15s;
+        z-index: 1;
+      }
+      #b-lightbox-close:hover { background: rgba(255,255,255,0.28); }
+    `;
+    document.head.appendChild(style);
+
+    // Popup
+    const popup = document.createElement('div');
+    popup.id = 'b-preview-popup';
+    document.body.appendChild(popup);
+
+    // Lightbox
+    const lightbox = document.createElement('div');
+    lightbox.id = 'b-lightbox';
+    const lightboxImg = document.createElement('img');
+    const lightboxClose = document.createElement('button');
+    lightboxClose.id = 'b-lightbox-close';
+    lightboxClose.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    lightbox.appendChild(lightboxClose);
+    lightbox.appendChild(lightboxImg);
+    document.body.appendChild(lightbox);
+
+    function openLightbox(src) {
+      lightboxImg.src = src;
+      lightbox.classList.add('open');
+    }
+    lightboxClose.addEventListener('click', e => { e.stopPropagation(); lightbox.classList.remove('open'); });
+    lightbox.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') lightbox.classList.remove('open'); });
+
+    const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
+
+    function getExt(url)      { return (url.split('?')[0].split('.').pop() || '').toLowerCase(); }
+    function getFileName(url) { return decodeURIComponent(url.split('?')[0].split('/').pop() || url); }
+    function isImage(url)     { return IMAGE_EXTS.includes(getExt(url)); }
+    function isPdf(url)       { return getExt(url) === 'pdf'; }
+
+    const fullscreenIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+    const newTabIcon    = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+    const pdfIcon       = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>`;
+
+    function makeActions(href, withFullscreen) {
+      const bar = document.createElement('div');
+      bar.className = 'b-preview-actions';
+
+      if (withFullscreen) {
+        const btnFull = document.createElement('button');
+        btnFull.className = 'b-preview-btn';
+        btnFull.innerHTML = `${fullscreenIcon} Fullscreen`;
+        btnFull.addEventListener('click', e => { e.stopPropagation(); openLightbox(href); });
+        bar.appendChild(btnFull);
+      }
+
+      const btnTab = document.createElement('a');
+      btnTab.className = 'b-preview-btn';
+      btnTab.href = href;
+      btnTab.target = '_blank';
+      btnTab.rel = 'noopener noreferrer';
+      btnTab.innerHTML = `${newTabIcon} Open in new tab`;
+      bar.appendChild(btnTab);
+
+      return bar;
+    }
+
+    function buildPopup(href) {
+      popup.innerHTML = '';
+
+      if (isImage(href)) {
+        const loading = document.createElement('div');
+        loading.className = 'b-preview-loading';
+        loading.textContent = 'Loading...';
+        popup.appendChild(loading);
+
+        const img = document.createElement('img');
+        img.onload = () => {
+          popup.innerHTML = '';
+          popup.appendChild(img);
+          popup.appendChild(makeActions(href, true));
+          positionPopup();
+        };
+        img.onerror = () => {
+          popup.innerHTML = '';
+          const err = document.createElement('div');
+          err.className = 'b-preview-loading';
+          err.textContent = 'Cannot load image';
+          popup.appendChild(err);
+          popup.appendChild(makeActions(href, false));
+        };
+        img.src = href;
+
+      } else if (isPdf(href)) {
+        const wrap = document.createElement('div');
+        wrap.className = 'b-preview-pdf-wrap';
+        wrap.innerHTML = pdfIcon;
+        const name = document.createElement('span');
+        name.className = 'b-preview-pdf-name';
+        name.textContent = getFileName(href);
+        wrap.appendChild(name);
+        popup.appendChild(wrap);
+        popup.appendChild(makeActions(href, false));
+      }
+    }
+
+    let currentHref  = null;
+    let hideTimer    = null;
+    let currentAnchor = null;
+
+    function positionPopup() {
+      if (!currentAnchor) return;
+      const rect   = currentAnchor.getBoundingClientRect();
+      const margin = 12;
+      const vpW    = window.innerWidth;
+      const vpH    = window.innerHeight;
+      const popW   = popup.offsetWidth  || 340;
+      const popH   = popup.offsetHeight || 300;
+
+      let left = rect.right + margin;
+      let top  = rect.top;
+
+      if (left + popW > vpW - margin) left = rect.left - popW - margin;
+      if (left < margin) left = margin;
+      if (top + popH > vpH - margin) top = vpH - popH - margin;
+      if (top < margin) top = margin;
+
+      popup.style.left = `${left}px`;
+      popup.style.top  = `${top}px`;
+    }
+
+    function showPopup(anchor) {
+      const href = anchor.getAttribute('href') || anchor.href || '';
+      if (!href || (!isImage(href) && !isPdf(href))) return;
+      clearTimeout(hideTimer);
+      currentAnchor = anchor;
+
+      if (href !== currentHref) {
+        currentHref = href;
+        buildPopup(href);
+        positionPopup();
+      }
+
+      popup.classList.add('visible');
+    }
+
+    function hidePopup() {
+      hideTimer = setTimeout(() => {
+        popup.classList.remove('visible');
+        currentHref   = null;
+        currentAnchor = null;
+      }, 200);
+    }
+
+    // Держим попап открытым когда мышь над ним
+    popup.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+    popup.addEventListener('mouseleave', hidePopup);
+
+    document.addEventListener('mouseover', e => {
+      const anchor = e.target.closest('td a');
+      if (anchor) showPopup(anchor);
+    });
+
+    document.addEventListener('mouseout', e => {
+      const anchor = e.target.closest('td a');
+      if (anchor) hidePopup();
+    });
+  })();
 
   // ── Тумблер ────────────────────────────────────────────────────────────
 
