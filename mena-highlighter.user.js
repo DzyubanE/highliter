@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Duplicate Highligher Team B BETA
 // @namespace    http://tampermonkey.net/
-// @version      1.1.0
+// @version      1.1.1
 // @updateURL    https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
 // @downloadURL  https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
 // @description  Подсветка дублей, бейджи, кнопки копирования
@@ -71,7 +71,7 @@
     const style = document.createElement('style');
     style.id = 'b-preview-style';
     style.textContent = `
-     #b-preview-popup {
+      #b-preview-popup {
         position: fixed;
         z-index: 99999;
         background: #fff;
@@ -82,38 +82,44 @@
         pointer-events: auto;
         opacity: 0;
         transition: opacity .15s;
-        width: 400px;
+        max-width: 400px;
+        width: max-content;
       }
       #b-preview-popup.visible { opacity: 1; }
       #b-preview-popup img {
         display: block;
-        width: 400px;
+        max-width: 400px;
+        max-height: 850px;
+        width: auto;
         height: auto;
         object-fit: contain;
         background: #F7F8FA;
       }
-     .b-preview-actions {
+      .b-preview-actions {
         display: flex;
         gap: 6px;
-        padding: 6px 8px;
+        padding: 8px 10px;
         background: #F7F8FA;
         border-bottom: .5px solid #DFE1E6;
       }
       .b-preview-btn {
+        flex: 1;
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        padding: 3px 9px;
-        border-radius: 6px;
-        border: .5px solid #DFE1E6;
+        justify-content: center;
+        gap: 5px;
+        padding: 5px 10px;
+        border-radius: 7px;
+        border: .5px solid #C8CDD8;
         background: #fff;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 500;
-        color: #42526E;
+        color: #253858;
         cursor: pointer;
         white-space: nowrap;
-        transition: background .12s, border-color .12s;
+        transition: background .12s, border-color .12s, color .12s;
         text-decoration: none;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.07);
       }
       .b-preview-btn:hover { background: #E6F1FB; border-color: #B5D4F4; color: #185FA5; }
       .b-preview-btn svg { flex-shrink: 0; pointer-events: none; }
@@ -121,20 +127,24 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 12px 14px;
+        padding: 14px 16px;
       }
       .b-preview-pdf-name {
         font-size: 12px;
         color: #42526E;
         font-weight: 500;
         word-break: break-all;
-        max-width: 240px;
+        max-width: 300px;
       }
       .b-preview-loading {
-        padding: 14px 18px;
+        padding: 20px 24px;
         font-size: 11px;
         color: #8993A4;
+        text-align: center;
+        min-width: 160px;
       }
+
+      /* Lightbox */
       #b-lightbox {
         position: fixed;
         inset: 0;
@@ -143,16 +153,46 @@
         display: none;
         align-items: center;
         justify-content: center;
-        cursor: zoom-out;
+        flex-direction: column;
+        gap: 12px;
       }
       #b-lightbox.open { display: flex; }
+      #b-lightbox-img-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+      }
       #b-lightbox img {
-        max-width: 92vw;
-        max-height: 92vh;
+        max-width: 90vw;
+        max-height: 85vh;
         object-fit: contain;
         border-radius: 6px;
         box-shadow: 0 8px 40px rgba(0,0,0,0.5);
-        cursor: default;
+        display: block;
+      }
+      .b-lightbox-arrow {
+        width: 40px; height: 40px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.15);
+        border: .5px solid rgba(255,255,255,0.3);
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background .15s;
+        flex-shrink: 0;
+        font-size: 0;
+      }
+      .b-lightbox-arrow:hover { background: rgba(255,255,255,0.28); }
+      .b-lightbox-arrow:disabled { opacity: 0.25; cursor: default; }
+      #b-lightbox-counter {
+        font-size: 12px;
+        color: rgba(255,255,255,0.6);
+        text-align: center;
+        height: 16px;
       }
       #b-lightbox-close {
         position: absolute;
@@ -162,75 +202,132 @@
         background: rgba(255,255,255,0.15);
         border: .5px solid rgba(255,255,255,0.3);
         color: #fff;
-        font-size: 18px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: background .15s;
-        z-index: 1;
       }
       #b-lightbox-close:hover { background: rgba(255,255,255,0.28); }
     `;
     document.head.appendChild(style);
 
-    // Popup
+    // ── Popup ─────────────────────────────────────────────────────────────
+
     const popup = document.createElement('div');
     popup.id = 'b-preview-popup';
     document.body.appendChild(popup);
 
-    // Lightbox
-    const lightbox     = document.createElement('div');
-    lightbox.id        = 'b-lightbox';
-    const lightboxImg  = document.createElement('img');
+    // ── Lightbox ──────────────────────────────────────────────────────────
+
+    const lightbox = document.createElement('div');
+    lightbox.id = 'b-lightbox';
+
     const lightboxClose = document.createElement('button');
-    lightboxClose.id   = 'b-lightbox-close';
+    lightboxClose.id = 'b-lightbox-close';
     lightboxClose.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+    const imgWrap = document.createElement('div');
+    imgWrap.id = 'b-lightbox-img-wrap';
+
+    const arrowPrev = document.createElement('button');
+    arrowPrev.className = 'b-lightbox-arrow';
+    arrowPrev.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`;
+
+    const lightboxImg = document.createElement('img');
+
+    const arrowNext = document.createElement('button');
+    arrowNext.className = 'b-lightbox-arrow';
+    arrowNext.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+
+    const lightboxCounter = document.createElement('div');
+    lightboxCounter.id = 'b-lightbox-counter';
+
+    imgWrap.appendChild(arrowPrev);
+    imgWrap.appendChild(lightboxImg);
+    imgWrap.appendChild(arrowNext);
+
     lightbox.appendChild(lightboxClose);
-    lightbox.appendChild(lightboxImg);
+    lightbox.appendChild(imgWrap);
+    lightbox.appendChild(lightboxCounter);
     document.body.appendChild(lightbox);
 
+    // Состояние лайтбокса
+    let lbUrls  = [];
+    let lbIndex = 0;
+
+    function updateLightbox() {
+      lightboxImg.src = lbUrls[lbIndex];
+      arrowPrev.disabled = lbIndex === 0;
+      arrowNext.disabled = lbIndex === lbUrls.length - 1;
+      lightboxCounter.textContent = lbUrls.length > 1
+        ? `${lbIndex + 1} / ${lbUrls.length}`
+        : '';
+      // Стрелки скрываем если одна картинка
+      arrowPrev.style.visibility = lbUrls.length > 1 ? 'visible' : 'hidden';
+      arrowNext.style.visibility = lbUrls.length > 1 ? 'visible' : 'hidden';
+    }
+
+    function openLightbox(urls, startIndex) {
+      lbUrls  = urls;
+      lbIndex = startIndex || 0;
+      updateLightbox();
+      lightbox.classList.add('open');
+    }
+
+    arrowPrev.addEventListener('click', e => {
+      e.stopPropagation();
+      if (lbIndex > 0) { lbIndex--; updateLightbox(); }
+    });
+    arrowNext.addEventListener('click', e => {
+      e.stopPropagation();
+      if (lbIndex < lbUrls.length - 1) { lbIndex++; updateLightbox(); }
+    });
     lightboxClose.addEventListener('click', e => { e.stopPropagation(); lightbox.classList.remove('open'); });
-    lightbox.addEventListener('click',      e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
-    document.addEventListener('keydown',    e => { if (e.key === 'Escape') lightbox.classList.remove('open'); });
+    lightbox.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
+    document.addEventListener('keydown', e => {
+      if (!lightbox.classList.contains('open')) return;
+      if (e.key === 'Escape')      lightbox.classList.remove('open');
+      if (e.key === 'ArrowLeft'  && lbIndex > 0)               { lbIndex--; updateLightbox(); }
+      if (e.key === 'ArrowRight' && lbIndex < lbUrls.length-1) { lbIndex++; updateLightbox(); }
+    });
+
+    // ── Утилиты ───────────────────────────────────────────────────────────
 
     const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
 
-    function getExt(path) {
-      return (path.split('?')[0].split('.').pop() || '').toLowerCase();
-    }
+    function getExt(path)      { return (path.split('?')[0].split('.').pop() || '').toLowerCase(); }
+    function getFileName(path) { return decodeURIComponent(path.split('?')[0].split('/').pop() || path); }
+    function isImage(path)     { return IMAGE_EXTS.includes(getExt(path)); }
+    function isPdf(path)       { return getExt(path) === 'pdf'; }
 
-    function getFileName(path) {
-      return decodeURIComponent(path.split('?')[0].split('/').pop() || path);
-    }
-
-    // Извлекаем реальный путь к файлу из href вида /admin/amazon/?type=6&url=BTDocuments%2F...
     function resolveFileUrl(anchor) {
       const href = anchor.getAttribute('href') || '';
       try {
-        // Строим абсолютный URL чтобы распарсить параметры
-        const abs    = new URL(href, window.location.origin);
+        const abs      = new URL(href, window.location.origin);
         const urlParam = abs.searchParams.get('url');
         if (urlParam) {
-          // urlParam — относительный путь к файлу, декодируем
-          const decoded = decodeURIComponent(urlParam);
-          // Возвращаем тот же /admin/amazon/?... — сервер отдаёт файл по этому адресу
-          // Для превью используем сам href (он и есть конечный endpoint)
-          return { previewUrl: href, filePath: decoded };
+          return { previewUrl: href, filePath: decodeURIComponent(urlParam) };
         }
       } catch (e) {}
-      // Запасной вариант — href напрямую
       return { previewUrl: href, filePath: href };
     }
 
-    function isImage(path) { return IMAGE_EXTS.includes(getExt(path)); }
-    function isPdf(path)   { return getExt(path) === 'pdf'; }
+    // Собираем все изображения из той же ячейки
+    function getCellImageUrls(anchor) {
+      const td = anchor.closest('td');
+      if (!td) return [];
+      return Array.from(td.querySelectorAll('a'))
+        .map(a => resolveFileUrl(a))
+        .filter(({ filePath }) => isImage(filePath))
+        .map(({ previewUrl }) => previewUrl);
+    }
 
-    const fullscreenIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
-    const newTabIcon     = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+    const fullscreenIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+    const newTabIcon     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
     const pdfIcon        = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>`;
 
-    function makeActions(href, withFullscreen) {
+    function makeActions(anchor, previewUrl, withFullscreen) {
       const bar = document.createElement('div');
       bar.className = 'b-preview-actions';
 
@@ -240,18 +337,19 @@
         btnFull.innerHTML = `${fullscreenIcon} Fullscreen`;
         btnFull.addEventListener('click', e => {
           e.stopPropagation();
-          lightboxImg.src = href;
-          lightbox.classList.add('open');
+          const allUrls  = getCellImageUrls(anchor);
+          const startIdx = allUrls.indexOf(previewUrl);
+          openLightbox(allUrls.length > 0 ? allUrls : [previewUrl], startIdx >= 0 ? startIdx : 0);
         });
         bar.appendChild(btnFull);
       }
 
       const btnTab = document.createElement('a');
-      btnTab.className  = 'b-preview-btn';
-      btnTab.href       = href;
-      btnTab.target     = '_blank';
-      btnTab.rel        = 'noopener noreferrer';
-      btnTab.innerHTML  = `${newTabIcon} Open in new tab`;
+      btnTab.className = 'b-preview-btn';
+      btnTab.href      = previewUrl;
+      btnTab.target    = '_blank';
+      btnTab.rel       = 'noopener noreferrer';
+      btnTab.innerHTML = `${newTabIcon} Open in new tab`;
       bar.appendChild(btnTab);
 
       return bar;
@@ -262,8 +360,7 @@
       const { previewUrl, filePath } = resolveFileUrl(anchor);
 
       if (isImage(filePath)) {
-        // Кнопки сверху сразу
-        popup.appendChild(makeActions(previewUrl, true));
+        popup.appendChild(makeActions(anchor, previewUrl, true));
 
         const loading = document.createElement('div');
         loading.className   = 'b-preview-loading';
@@ -282,8 +379,7 @@
         img.src = previewUrl;
 
       } else if (isPdf(filePath)) {
-        popup.appendChild(makeActions(previewUrl, false));
-
+        popup.appendChild(makeActions(anchor, previewUrl, false));
         const wrap = document.createElement('div');
         wrap.className = 'b-preview-pdf-wrap';
         wrap.innerHTML = pdfIcon;
@@ -305,7 +401,7 @@
       const margin = 12;
       const vpW    = window.innerWidth;
       const vpH    = window.innerHeight;
-      const popW   = popup.offsetWidth  || 340;
+      const popW   = popup.offsetWidth  || 400;
       const popH   = popup.offsetHeight || 300;
 
       let left = rect.right + margin;
@@ -323,7 +419,6 @@
     function showPopup(anchor) {
       const href = anchor.getAttribute('href') || '';
       if (!href) return;
-
       const { filePath } = resolveFileUrl(anchor);
       if (!isImage(filePath) && !isPdf(filePath)) return;
 
@@ -354,7 +449,6 @@
       const anchor = e.target.closest('td a');
       if (anchor) showPopup(anchor);
     });
-
     document.addEventListener('mouseout', e => {
       const anchor = e.target.closest('td a');
       if (anchor) hidePopup();
