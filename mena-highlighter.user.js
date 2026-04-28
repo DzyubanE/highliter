@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Duplicate Highligher Team B BETA
 // @namespace    http://tampermonkey.net/
-// @version      1.1.1
+// @version      1.1.2
 // @updateURL    https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
 // @downloadURL  https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
 // @description  Подсветка дублей, бейджи, кнопки копирования
@@ -89,7 +89,7 @@
       #b-preview-popup img {
         display: block;
         max-width: 400px;
-        max-height: 850px;
+        max-height: calc(100vh - 120px);
         width: auto;
         height: auto;
         object-fit: contain;
@@ -97,31 +97,30 @@
       }
       .b-preview-actions {
         display: flex;
-        gap: 6px;
-        padding: 8px 10px;
-        background: #F7F8FA;
-        border-bottom: .5px solid #DFE1E6;
+        gap: 0;
+        border-bottom: .5px solid rgba(255,255,255,0.2);
       }
       .b-preview-btn {
         flex: 1;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 5px;
-        padding: 5px 10px;
-        border-radius: 7px;
-        border: .5px solid #C8CDD8;
-        background: #fff;
+        gap: 6px;
+        padding: 8px 12px;
+        border: none;
+        border-right: .5px solid rgba(255,255,255,0.2);
+        background: #2ABFCF;
         font-size: 12px;
-        font-weight: 500;
-        color: #253858;
+        font-weight: 600;
+        color: #fff;
         cursor: pointer;
         white-space: nowrap;
-        transition: background .12s, border-color .12s, color .12s;
+        transition: background .12s;
         text-decoration: none;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+        letter-spacing: .02em;
       }
-      .b-preview-btn:hover { background: #E6F1FB; border-color: #B5D4F4; color: #185FA5; }
+      .b-preview-btn:last-child { border-right: none; }
+      .b-preview-btn:hover { background: #1fa8b8; }
       .b-preview-btn svg { flex-shrink: 0; pointer-events: none; }
       .b-preview-pdf-wrap {
         display: flex;
@@ -143,8 +142,6 @@
         text-align: center;
         min-width: 160px;
       }
-
-      /* Lightbox */
       #b-lightbox {
         position: fixed;
         inset: 0;
@@ -158,7 +155,6 @@
       }
       #b-lightbox.open { display: flex; }
       #b-lightbox-img-wrap {
-        position: relative;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -184,7 +180,6 @@
         justify-content: center;
         transition: background .15s;
         flex-shrink: 0;
-        font-size: 0;
       }
       .b-lightbox-arrow:hover { background: rgba(255,255,255,0.28); }
       .b-lightbox-arrow:disabled { opacity: 0.25; cursor: default; }
@@ -192,7 +187,7 @@
         font-size: 12px;
         color: rgba(255,255,255,0.6);
         text-align: center;
-        height: 16px;
+        min-height: 16px;
       }
       #b-lightbox-close {
         position: absolute;
@@ -207,12 +202,11 @@
         align-items: center;
         justify-content: center;
         transition: background .15s;
+        z-index: 1;
       }
       #b-lightbox-close:hover { background: rgba(255,255,255,0.28); }
     `;
     document.head.appendChild(style);
-
-    // ── Popup ─────────────────────────────────────────────────────────────
 
     const popup = document.createElement('div');
     popup.id = 'b-preview-popup';
@@ -246,13 +240,11 @@
     imgWrap.appendChild(arrowPrev);
     imgWrap.appendChild(lightboxImg);
     imgWrap.appendChild(arrowNext);
-
     lightbox.appendChild(lightboxClose);
     lightbox.appendChild(imgWrap);
     lightbox.appendChild(lightboxCounter);
     document.body.appendChild(lightbox);
 
-    // Состояние лайтбокса
     let lbUrls  = [];
     let lbIndex = 0;
 
@@ -260,12 +252,9 @@
       lightboxImg.src = lbUrls[lbIndex];
       arrowPrev.disabled = lbIndex === 0;
       arrowNext.disabled = lbIndex === lbUrls.length - 1;
-      lightboxCounter.textContent = lbUrls.length > 1
-        ? `${lbIndex + 1} / ${lbUrls.length}`
-        : '';
-      // Стрелки скрываем если одна картинка
       arrowPrev.style.visibility = lbUrls.length > 1 ? 'visible' : 'hidden';
       arrowNext.style.visibility = lbUrls.length > 1 ? 'visible' : 'hidden';
+      lightboxCounter.textContent = lbUrls.length > 1 ? `${lbIndex + 1} / ${lbUrls.length}` : '';
     }
 
     function openLightbox(urls, startIndex) {
@@ -275,14 +264,8 @@
       lightbox.classList.add('open');
     }
 
-    arrowPrev.addEventListener('click', e => {
-      e.stopPropagation();
-      if (lbIndex > 0) { lbIndex--; updateLightbox(); }
-    });
-    arrowNext.addEventListener('click', e => {
-      e.stopPropagation();
-      if (lbIndex < lbUrls.length - 1) { lbIndex++; updateLightbox(); }
-    });
+    arrowPrev.addEventListener('click', e => { e.stopPropagation(); if (lbIndex > 0) { lbIndex--; updateLightbox(); } });
+    arrowNext.addEventListener('click', e => { e.stopPropagation(); if (lbIndex < lbUrls.length - 1) { lbIndex++; updateLightbox(); } });
     lightboxClose.addEventListener('click', e => { e.stopPropagation(); lightbox.classList.remove('open'); });
     lightbox.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
     document.addEventListener('keydown', e => {
@@ -306,14 +289,12 @@
       try {
         const abs      = new URL(href, window.location.origin);
         const urlParam = abs.searchParams.get('url');
-        if (urlParam) {
-          return { previewUrl: href, filePath: decodeURIComponent(urlParam) };
-        }
+        if (urlParam) return { previewUrl: href, filePath: decodeURIComponent(urlParam) };
       } catch (e) {}
       return { previewUrl: href, filePath: href };
     }
 
-    // Собираем все изображения из той же ячейки
+    // Ищем все картинки в той же ячейке — включая вложенные span и br
     function getCellImageUrls(anchor) {
       const td = anchor.closest('td');
       if (!td) return [];
@@ -323,8 +304,8 @@
         .map(({ previewUrl }) => previewUrl);
     }
 
-    const fullscreenIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
-    const newTabIcon     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+    const fullscreenIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+    const newTabIcon     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
     const pdfIcon        = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>`;
 
     function makeActions(anchor, previewUrl, withFullscreen) {
@@ -368,14 +349,8 @@
         popup.appendChild(loading);
 
         const img = document.createElement('img');
-        img.onload = () => {
-          loading.remove();
-          popup.appendChild(img);
-          positionPopup();
-        };
-        img.onerror = () => {
-          loading.textContent = 'Cannot load image';
-        };
+        img.onload = () => { loading.remove(); popup.appendChild(img); positionPopup(); };
+        img.onerror = () => { loading.textContent = 'Cannot load image'; };
         img.src = previewUrl;
 
       } else if (isPdf(filePath)) {
@@ -407,8 +382,11 @@
       let left = rect.right + margin;
       let top  = rect.top;
 
+      // Не выходит за правый край — уходим влево
       if (left + popW > vpW - margin) left = rect.left - popW - margin;
       if (left < margin) left = margin;
+
+      // Не выходит за нижний край — прижимаем снизу с отступом
       if (top + popH > vpH - margin) top = vpH - popH - margin;
       if (top < margin) top = margin;
 
