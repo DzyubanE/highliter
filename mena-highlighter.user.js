@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Duplicate Highligher Team B BETA
 // @namespace    http://tampermonkey.net/
-// @version      1.0.8
+// @version      1.0.9
 // @updateURL    https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
 // @downloadURL  https://github.com/DzyubanE/MENA-L2/raw/refs/heads/main/mena-highlighter.user.js
 // @description  Подсветка дублей, бейджи, кнопки копирования
@@ -65,7 +65,7 @@
     
 // ── Превью файлов при наведении ───────────────────────────────────────
 
-  (function initFilePreview() {
+ (function initFilePreview() {
     if (document.getElementById('b-preview-style')) return;
 
     const style = document.createElement('style');
@@ -77,7 +77,7 @@
         background: #fff;
         border: .5px solid #DFE1E6;
         border-radius: 10px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
         overflow: hidden;
         pointer-events: auto;
         opacity: 0;
@@ -136,13 +136,11 @@
         font-size: 11px;
         color: #8993A4;
       }
-
-      /* Lightbox */
       #b-lightbox {
         position: fixed;
         inset: 0;
         z-index: 999999;
-        background: rgba(0,0,0,0.85);
+        background: rgba(0,0,0,0.88);
         display: none;
         align-items: center;
         justify-content: center;
@@ -183,34 +181,55 @@
     document.body.appendChild(popup);
 
     // Lightbox
-    const lightbox = document.createElement('div');
-    lightbox.id = 'b-lightbox';
-    const lightboxImg = document.createElement('img');
+    const lightbox     = document.createElement('div');
+    lightbox.id        = 'b-lightbox';
+    const lightboxImg  = document.createElement('img');
     const lightboxClose = document.createElement('button');
-    lightboxClose.id = 'b-lightbox-close';
+    lightboxClose.id   = 'b-lightbox-close';
     lightboxClose.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
     lightbox.appendChild(lightboxClose);
     lightbox.appendChild(lightboxImg);
     document.body.appendChild(lightbox);
 
-    function openLightbox(src) {
-      lightboxImg.src = src;
-      lightbox.classList.add('open');
-    }
     lightboxClose.addEventListener('click', e => { e.stopPropagation(); lightbox.classList.remove('open'); });
-    lightbox.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') lightbox.classList.remove('open'); });
+    lightbox.addEventListener('click',      e => { if (e.target === lightbox) lightbox.classList.remove('open'); });
+    document.addEventListener('keydown',    e => { if (e.key === 'Escape') lightbox.classList.remove('open'); });
 
     const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
 
-    function getExt(url)      { return (url.split('?')[0].split('.').pop() || '').toLowerCase(); }
-    function getFileName(url) { return decodeURIComponent(url.split('?')[0].split('/').pop() || url); }
-    function isImage(url)     { return IMAGE_EXTS.includes(getExt(url)); }
-    function isPdf(url)       { return getExt(url) === 'pdf'; }
+    function getExt(path) {
+      return (path.split('?')[0].split('.').pop() || '').toLowerCase();
+    }
+
+    function getFileName(path) {
+      return decodeURIComponent(path.split('?')[0].split('/').pop() || path);
+    }
+
+    // Извлекаем реальный путь к файлу из href вида /admin/amazon/?type=6&url=BTDocuments%2F...
+    function resolveFileUrl(anchor) {
+      const href = anchor.getAttribute('href') || '';
+      try {
+        // Строим абсолютный URL чтобы распарсить параметры
+        const abs    = new URL(href, window.location.origin);
+        const urlParam = abs.searchParams.get('url');
+        if (urlParam) {
+          // urlParam — относительный путь к файлу, декодируем
+          const decoded = decodeURIComponent(urlParam);
+          // Возвращаем тот же /admin/amazon/?... — сервер отдаёт файл по этому адресу
+          // Для превью используем сам href (он и есть конечный endpoint)
+          return { previewUrl: href, filePath: decoded };
+        }
+      } catch (e) {}
+      // Запасной вариант — href напрямую
+      return { previewUrl: href, filePath: href };
+    }
+
+    function isImage(path) { return IMAGE_EXTS.includes(getExt(path)); }
+    function isPdf(path)   { return getExt(path) === 'pdf'; }
 
     const fullscreenIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
-    const newTabIcon    = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
-    const pdfIcon       = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>`;
+    const newTabIcon     = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+    const pdfIcon        = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>`;
 
     function makeActions(href, withFullscreen) {
       const bar = document.createElement('div');
@@ -220,27 +239,32 @@
         const btnFull = document.createElement('button');
         btnFull.className = 'b-preview-btn';
         btnFull.innerHTML = `${fullscreenIcon} Fullscreen`;
-        btnFull.addEventListener('click', e => { e.stopPropagation(); openLightbox(href); });
+        btnFull.addEventListener('click', e => {
+          e.stopPropagation();
+          lightboxImg.src = href;
+          lightbox.classList.add('open');
+        });
         bar.appendChild(btnFull);
       }
 
       const btnTab = document.createElement('a');
-      btnTab.className = 'b-preview-btn';
-      btnTab.href = href;
-      btnTab.target = '_blank';
-      btnTab.rel = 'noopener noreferrer';
-      btnTab.innerHTML = `${newTabIcon} Open in new tab`;
+      btnTab.className  = 'b-preview-btn';
+      btnTab.href       = href;
+      btnTab.target     = '_blank';
+      btnTab.rel        = 'noopener noreferrer';
+      btnTab.innerHTML  = `${newTabIcon} Open in new tab`;
       bar.appendChild(btnTab);
 
       return bar;
     }
 
-    function buildPopup(href) {
+    function buildPopup(anchor) {
       popup.innerHTML = '';
+      const { previewUrl, filePath } = resolveFileUrl(anchor);
 
-      if (isImage(href)) {
+      if (isImage(filePath)) {
         const loading = document.createElement('div');
-        loading.className = 'b-preview-loading';
+        loading.className   = 'b-preview-loading';
         loading.textContent = 'Loading...';
         popup.appendChild(loading);
 
@@ -248,35 +272,35 @@
         img.onload = () => {
           popup.innerHTML = '';
           popup.appendChild(img);
-          popup.appendChild(makeActions(href, true));
+          popup.appendChild(makeActions(previewUrl, true));
           positionPopup();
         };
         img.onerror = () => {
           popup.innerHTML = '';
           const err = document.createElement('div');
-          err.className = 'b-preview-loading';
+          err.className   = 'b-preview-loading';
           err.textContent = 'Cannot load image';
           popup.appendChild(err);
-          popup.appendChild(makeActions(href, false));
+          popup.appendChild(makeActions(previewUrl, false));
         };
-        img.src = href;
+        img.src = previewUrl;
 
-      } else if (isPdf(href)) {
+      } else if (isPdf(filePath)) {
         const wrap = document.createElement('div');
-        wrap.className = 'b-preview-pdf-wrap';
-        wrap.innerHTML = pdfIcon;
+        wrap.className  = 'b-preview-pdf-wrap';
+        wrap.innerHTML  = pdfIcon;
         const name = document.createElement('span');
-        name.className = 'b-preview-pdf-name';
-        name.textContent = getFileName(href);
+        name.className  = 'b-preview-pdf-name';
+        name.textContent = getFileName(filePath);
         wrap.appendChild(name);
         popup.appendChild(wrap);
-        popup.appendChild(makeActions(href, false));
+        popup.appendChild(makeActions(previewUrl, false));
       }
     }
 
-    let currentHref  = null;
-    let hideTimer    = null;
+    let currentHref   = null;
     let currentAnchor = null;
+    let hideTimer     = null;
 
     function positionPopup() {
       if (!currentAnchor) return;
@@ -300,14 +324,18 @@
     }
 
     function showPopup(anchor) {
-      const href = anchor.getAttribute('href') || anchor.href || '';
-      if (!href || (!isImage(href) && !isPdf(href))) return;
+      const href = anchor.getAttribute('href') || '';
+      if (!href) return;
+
+      const { filePath } = resolveFileUrl(anchor);
+      if (!isImage(filePath) && !isPdf(filePath)) return;
+
       clearTimeout(hideTimer);
       currentAnchor = anchor;
 
       if (href !== currentHref) {
         currentHref = href;
-        buildPopup(href);
+        buildPopup(anchor);
         positionPopup();
       }
 
@@ -322,7 +350,6 @@
       }, 200);
     }
 
-    // Держим попап открытым когда мышь над ним
     popup.addEventListener('mouseenter', () => clearTimeout(hideTimer));
     popup.addEventListener('mouseleave', hidePopup);
 
@@ -335,6 +362,7 @@
       const anchor = e.target.closest('td a');
       if (anchor) hidePopup();
     });
+
   })();
 
   // ── Тумблер ────────────────────────────────────────────────────────────
